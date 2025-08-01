@@ -4,37 +4,44 @@ import os
 
 app = Flask(__name__)
 
-# Replace with your actual API keys
-API_KEY_1 = os.environ.get("THREAT_API_KEY_1", "756b79aa76926048db6d76f32dc4ad5cea72943bb859ff7777aac0366e2911fec3703563f38bc65f")
-API_KEY_2 = os.environ.get("THREAT_API_KEY_2", "9d0a36f577cfd26388958fdc5a504c6398c63ada431237fcbf058c4ee4ab1721")
-
-# Home page
-@app.route('/')
-def home():
-    return render_template('index.html')
-
-# Threat detection route
-@app.route('/scan', methods=['POST'])
+@app.route('/', methods=['GET', 'POST'])
 def scan():
-    url = request.form['url']
+    threat_info = None
+    if request.method == 'POST':
+        input_type = request.form['input_type']
+        user_input = request.form['user_input']
 
-    # API 1 call (e.g., VirusTotal)
-    headers1 = {
-        "x-apikey": API_KEY_1
-    }
-    response1 = requests.get(f"https://www.virustotal.com/api/v3/urls", headers=headers1)
-    result1 = response1.json()
+        if input_type == "IP":
+            api_key = os.environ.get("THREAT_API_KEY_1")
+            if api_key:
+                url = f"https://api.abuseipdb.com/api/v2/check?ipAddress={user_input}&maxAgeInDays=90"
+                headers = {"Key": api_key, "Accept": "application/json"}
+                response = requests.get(url, headers=headers)
+                threat_info = response.json()
+            else:
+                threat_info = {"error": "Missing THREAT_API_KEY_1"}
 
-    # API 2 call (you can replace this with another threat intel API)
-    headers2 = {
-        "Authorization": f"Bearer {API_KEY_2}"
-    }
-    response2 = requests.get(f"https://api.threatintelligenceplatform.com/v1/url?url={url}&apikey={API_KEY_2}")
-    result2 = response2.json()
+        elif input_type == "URL":
+            api_key = os.environ.get("THREAT_API_KEY_2")
+            if api_key:
+                url_scan = "https://www.virustotal.com/api/v3/urls"
+                headers = {"x-apikey": api_key}
+                data = {"url": user_input}
 
-    return render_template("result.html", url=url, result1=result1, result2=result2)
+                scan_response = requests.post(url_scan, headers=headers, data=data)
+                scan_data = scan_response.json()
 
-# Run the app
+                url_id = scan_data.get("data", {}).get("id")
+                if url_id:
+                    url_report = f"https://www.virustotal.com/api/v3/analyses/{url_id}"
+                    report_response = requests.get(url_report, headers=headers)
+                    threat_info = report_response.json()
+                else:
+                    threat_info = {"error": "Could not retrieve scan ID from VirusTotal"}
+            else:
+                threat_info = {"error": "Missing THREAT_API_KEY_2"}
+
+    return render_template("index.html", threat_info=threat_info)
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
