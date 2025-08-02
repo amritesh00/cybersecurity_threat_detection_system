@@ -23,3 +23,32 @@
     {% endif %}
 </body>
 </html>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cyber Threat Detector</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Cybersecurity Threat Detector</h1>
+    <form method="POST" action="/">
+        <select name="input_type">
+            <option value="IP">IP Address</option>
+            <option value="URL">URL</option>
+        </select>
+        <input type="text" name="user_input" placeholder="Enter IP or URL" required />
+        <button type="submit">Check</button>
+    </form>
+
+    {% if threat_info %}
+        <div class="results">
+            <h2>Scan Results</h2>
+            <pre>{{ threat_info | tojson(indent=2) }}</pre>
+        </div>
+    {% endif %}
+
+    <footer style="margin-top: 50px; font-size: 14px; color: #555;">
+        &copy; 2025 Amritesh Bhukhmaria. All rights reserved.
+    </footer>
+</body>
+</html>
